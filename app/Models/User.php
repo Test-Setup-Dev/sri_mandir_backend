@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -87,6 +88,11 @@ public function saveAuthToken()
     // Generate a random token
     $this->token = Str::random(60); // ya koi aur token logic
     $this->save();
+}
+
+public function notifications(): HasMany
+{
+    return $this->hasMany(UserNotification::class);
 }
 
 }

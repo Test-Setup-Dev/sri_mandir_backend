@@ -8,17 +8,17 @@ use Illuminate\Support\Facades\DB;
 use App\Models\MediaItem;
 use App\Models\Admin;
 use Illuminate\Support\Facades\Hash;
-
-
-require_once storage_path('../app/Helpers/FirebaseHelper.php'); // helper include
+use App\Services\UserNotificationService;
 
 
 class AdminAuthController extends Controller
 {
 
      protected $assetUrl;
-    public function __construct(){
+    protected UserNotificationService $notificationService;
+    public function __construct(UserNotificationService $notificationService){
         $this->assetUrl = env('ASSET_URL', '');
+        $this->notificationService = $notificationService;
     }
 
     // Register admin
@@ -162,23 +162,28 @@ public function addMediaItem(Request $request)
         $title = "🎵 New $mediaType Added!";
         $body  = "{$media->title} by {$artistName} ({$mediaType})";
 
-        // ✅ Send notifications
-        $tokens = DB::table('users')->whereNotNull('fcm_token')->pluck('fcm_token');
-        $successCount = 0;
+        // ✅ Send notifications and store them in DB
+        $users = DB::table('users')
+            ->select('id', 'name', 'fcm_token')
+            ->whereNotNull('fcm_token')
+            ->where('fcm_token', '!=', '')
+            ->get();
 
-        foreach ($tokens as $token) {
-            $response = sendFirebaseNotification($title, $body, $token);
-            $resp = json_decode($response, true);
-            if (isset($resp['name'])) {
-                $successCount++;
-            }
-        }
+        [$successCount] = $this->notificationService->sendToUsers(
+            $users,
+            $title,
+            $body,
+            [
+                'delivery_type' => 'broadcast',
+                'sent_by_admin_id' => optional($request->user())->id,
+            ]
+        );
 
         return response()->json([
             'status' => true,
             'message' => 'Media item added successfully and notification sent!',
             'media' => $media,
-            'total_users' => count($tokens),
+            'total_users' => $users->count(),
             'success_count' => $successCount,
         ]);
 

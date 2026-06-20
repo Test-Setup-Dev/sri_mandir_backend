@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\AboutUsController;
 use App\Http\Controllers\Admin\PrivacyPolicyController;
 use App\Http\Controllers\Admin\TermsConditionController;
 use App\Http\Controllers\Admin\UserSupportController;
+use App\Http\Controllers\Api\UserNotificationController;
 
 
 /*
@@ -52,6 +53,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [UserController::class, 'logout']);
     Route::get('/profile', [UserController::class, 'profile']);
     Route::post('/profile-update', [UserController::class, 'updateProfile']);
+    Route::get('/my-notifications', [UserNotificationController::class, 'index']);
+    Route::delete('/my-notifications/{notification}', [UserNotificationController::class, 'destroy']);
     Route::post('/rate', [RatingController::class, 'rateMedia']);
     Route::get('/my-faverate', [RatingController::class, 'myRatings']);
     Route::post('/media/favorite', [MediaController::class, 'toggleFavorite']);

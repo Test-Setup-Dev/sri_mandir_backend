@@ -25,6 +25,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const isAboutTab = activeTab.id === 'about';
+
   useEffect(() => {
     fetchContent();
   }, [activeTab]);
@@ -112,6 +114,11 @@ export default function SettingsPage() {
                 placeholder={`Enter ${activeTab.label} content here...`}
                 required
               />
+              {isAboutTab && (
+                <p className={styles.helperText}>
+                  Use blank lines to create separate sections. If a section starts with a short line, it will be used as the section heading on the About page.
+                </p>
+              )}
             </div>
 
             <button type="submit" className={styles.saveBtn} disabled={saving}>

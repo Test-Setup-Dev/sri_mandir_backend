@@ -7,12 +7,15 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-
-require_once app_path('Helpers/FirebaseHelper.php');
+use App\Services\UserNotificationService;
 
 class AdminNotificationController extends Controller
 {
     private string $templatesFile = 'notification_templates.json';
+
+    public function __construct(private UserNotificationService $notificationService)
+    {
+    }
 
     public function sendToAllUsers(Request $request)
     {
@@ -33,7 +36,15 @@ class AdminNotificationController extends Controller
             ], 404);
         }
 
-        [$successCount, $results] = $this->dispatchNotifications($users, $request->title, $request->body);
+        [$successCount, $results] = $this->notificationService->sendToUsers(
+            $users,
+            $request->title,
+            $request->body,
+            [
+                'delivery_type' => 'broadcast',
+                'sent_by_admin_id' => optional($request->user())->id,
+            ]
+        );
 
         return response()->json([
             'status' => true,
@@ -67,7 +78,15 @@ class AdminNotificationController extends Controller
             ], 422);
         }
 
-        [$successCount, $results] = $this->dispatchNotifications(collect([$user]), $request->title, $request->body);
+        [$successCount, $results] = $this->notificationService->sendToUsers(
+            collect([$user]),
+            $request->title,
+            $request->body,
+            [
+                'delivery_type' => 'direct',
+                'sent_by_admin_id' => optional($request->user())->id,
+            ]
+        );
 
         return response()->json([
             'status' => $successCount === 1,
@@ -176,32 +195,6 @@ class AdminNotificationController extends Controller
             'message' => 'Notification template deleted successfully.',
         ]);
     }
-
-    private function dispatchNotifications($users, string $title, string $body): array
-    {
-        $results = [];
-        $successCount = 0;
-
-        foreach ($users as $user) {
-            $response = sendFirebaseNotification($title, $body, $user->fcm_token);
-            $decoded = json_decode($response, true);
-            $success = is_array($decoded) && isset($decoded['name']);
-
-            if ($success) {
-                $successCount++;
-            }
-
-            $results[] = [
-                'user_id' => $user->id,
-                'user_name' => $user->name,
-                'success' => $success,
-                'response' => $decoded ?: ['raw' => $response],
-            ];
-        }
-
-        return [$successCount, $results];
-    }
-
     private function getTemplates(): array
     {
         if (!Storage::disk('local')->exists($this->templatesFile)) {
