@@ -61,12 +61,18 @@ export default function NotificationsPage() {
     responseData.results.every((item) => item.notification_id);
 
   const storeNotificationRecords = async ({ title, body, userIds = [], broadcast = false }) => {
-    await api.post('/admin/notifications/store', {
-      title,
-      body,
-      user_ids: userIds,
-      broadcast,
-    });
+    try {
+      await api.post('/admin/notifications/store', {
+        title,
+        body,
+        user_ids: userIds,
+        broadcast,
+      });
+      return true;
+    } catch (error) {
+      console.error('Error storing notification records:', error);
+      return false;
+    }
   };
 
   const fetchUsers = async () => {
@@ -212,8 +218,11 @@ export default function NotificationsPage() {
         body: broadcastForm.body.trim(),
       });
 
-      if (!hasStoredNotifications(response.data)) {
-        await storeNotificationRecords({
+      const storedInSendResponse = hasStoredNotifications(response.data);
+      let fallbackStored = true;
+
+      if (!storedInSendResponse) {
+        fallbackStored = await storeNotificationRecords({
           title: broadcastForm.title.trim(),
           body: broadcastForm.body.trim(),
           broadcast: true,
@@ -221,6 +230,9 @@ export default function NotificationsPage() {
       }
 
       toast.success(response.data.message || 'Broadcast sent successfully');
+      if (!storedInSendResponse && !fallbackStored) {
+        toast.error('Notification was sent, but storage fallback API is missing on the server.');
+      }
       setBroadcastForm(emptyForm);
       setActiveTemplateId(null);
     } catch (error) {
@@ -265,8 +277,9 @@ export default function NotificationsPage() {
         .filter(({ result }) => !hasStoredNotifications(result.value.data))
         .map(({ userId }) => userId);
 
+      let fallbackStored = true;
       if (missingStoredUserIds.length > 0) {
-        await storeNotificationRecords({
+        fallbackStored = await storeNotificationRecords({
           title: individualForm.title.trim(),
           body: individualForm.body.trim(),
           userIds: missingStoredUserIds,
@@ -280,6 +293,10 @@ export default function NotificationsPage() {
         toast.success(`Sent to ${successCount} users, ${failCount} failed`);
       } else {
         toast.error('Failed to send notification to selected users');
+      }
+
+      if (successCount > 0 && missingStoredUserIds.length > 0 && !fallbackStored) {
+        toast.error('Notification was sent, but storage fallback API is missing on the server.');
       }
 
       setIndividualForm(emptyForm);

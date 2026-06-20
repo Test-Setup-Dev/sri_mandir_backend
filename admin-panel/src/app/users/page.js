@@ -65,12 +65,18 @@ export default function UsersPage() {
     responseData.results.every((item) => item.notification_id);
 
   const storeNotificationRecords = async ({ title, body, userIds = [], broadcast = false }) => {
-    await api.post('/admin/notifications/store', {
-      title,
-      body,
-      user_ids: userIds,
-      broadcast,
-    });
+    try {
+      await api.post('/admin/notifications/store', {
+        title,
+        body,
+        user_ids: userIds,
+        broadcast,
+      });
+      return true;
+    } catch (error) {
+      console.error('Error storing notification records:', error);
+      return false;
+    }
   };
 
   const fetchUsers = async () => {
@@ -231,8 +237,11 @@ export default function UsersPage() {
         body: notificationForm.body.trim()
       });
 
-      if (!hasStoredNotifications(response.data)) {
-        await storeNotificationRecords({
+      const storedInSendResponse = hasStoredNotifications(response.data);
+      let fallbackStored = true;
+
+      if (!storedInSendResponse) {
+        fallbackStored = await storeNotificationRecords({
           title: notificationForm.title.trim(),
           body: notificationForm.body.trim(),
           userIds: notificationTarget ? [notificationTarget.id] : [],
@@ -241,6 +250,9 @@ export default function UsersPage() {
       }
 
       toast.success(response.data.message || 'Notification sent successfully');
+      if (!storedInSendResponse && !fallbackStored) {
+        toast.error('Notification was sent, but storage fallback API is missing on the server.');
+      }
       closeNotificationModal();
     } catch (error) {
       console.error('Error sending notification:', error);
