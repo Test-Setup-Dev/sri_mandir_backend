@@ -2,7 +2,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://rapidload.in/sanatanlok/api/',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://rapidload.in/shri_mindir/api/',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

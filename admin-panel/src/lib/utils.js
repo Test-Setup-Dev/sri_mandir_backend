@@ -7,7 +7,7 @@ export const getImageUrl = (path) => {
   if (!path) return null;
   if (path.startsWith('http')) return path;
   
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://rapidload.in/sanatanlok/api/';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://rapidload.in/shri_mindir/api/';
   const rootUrl = baseUrl.replace(/\/api\/?$/, '');
   
   return `${rootUrl}/public/storage/${path.startsWith('/') ? path.slice(1) : path}`;
