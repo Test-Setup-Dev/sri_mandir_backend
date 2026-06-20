@@ -55,6 +55,20 @@ export default function NotificationsPage() {
     fetchTemplates();
   }, []);
 
+  const hasStoredNotifications = (responseData) =>
+    Array.isArray(responseData?.results) &&
+    responseData.results.length > 0 &&
+    responseData.results.every((item) => item.notification_id);
+
+  const storeNotificationRecords = async ({ title, body, userIds = [], broadcast = false }) => {
+    await api.post('/admin/notifications/store', {
+      title,
+      body,
+      user_ids: userIds,
+      broadcast,
+    });
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -197,6 +211,15 @@ export default function NotificationsPage() {
         title: broadcastForm.title.trim(),
         body: broadcastForm.body.trim(),
       });
+
+      if (!hasStoredNotifications(response.data)) {
+        await storeNotificationRecords({
+          title: broadcastForm.title.trim(),
+          body: broadcastForm.body.trim(),
+          broadcast: true,
+        });
+      }
+
       toast.success(response.data.message || 'Broadcast sent successfully');
       setBroadcastForm(emptyForm);
       setActiveTemplateId(null);
@@ -235,6 +258,21 @@ export default function NotificationsPage() {
 
       const successCount = results.filter((result) => result.status === 'fulfilled').length;
       const failCount = results.length - successCount;
+
+      const missingStoredUserIds = results
+        .map((result, index) => ({ result, userId: selectedUserIds[index] }))
+        .filter(({ result }) => result.status === 'fulfilled')
+        .filter(({ result }) => !hasStoredNotifications(result.value.data))
+        .map(({ userId }) => userId);
+
+      if (missingStoredUserIds.length > 0) {
+        await storeNotificationRecords({
+          title: individualForm.title.trim(),
+          body: individualForm.body.trim(),
+          userIds: missingStoredUserIds,
+          broadcast: false,
+        });
+      }
 
       if (successCount > 0 && failCount === 0) {
         toast.success(`Notification sent to ${successCount} user${successCount > 1 ? 's' : ''}`);

@@ -10,6 +10,36 @@ require_once app_path('Helpers/FirebaseHelper.php');
 
 class UserNotificationService
 {
+    public function storeForUsers(iterable $users, string $title, string $body, array $context = []): array
+    {
+        $results = [];
+        $usersCollection = $users instanceof Collection ? $users : collect($users);
+
+        foreach ($usersCollection as $user) {
+            $notification = UserNotification::create([
+                'user_id' => (int) $user->id,
+                'title' => $title,
+                'body' => $body,
+                'delivery_type' => $context['delivery_type'] ?? 'direct',
+                'sent_by_admin_id' => $context['sent_by_admin_id'] ?? null,
+                'is_sent' => $context['is_sent'] ?? false,
+                'firebase_message_id' => $context['firebase_message_id'] ?? null,
+                'firebase_response' => $context['firebase_response'] ?? null,
+                'sent_at' => $context['sent_at'] ?? now(),
+            ]);
+
+            $results[] = [
+                'notification_id' => $notification->id,
+                'user_id' => $user->id,
+                'user_name' => $user->name ?? null,
+                'success' => (bool) $notification->is_sent,
+                'response' => $notification->firebase_response,
+            ];
+        }
+
+        return [count($results), $results];
+    }
+
     public function sendToUsers(iterable $users, string $title, string $body, array $context = []): array
     {
         $results = [];

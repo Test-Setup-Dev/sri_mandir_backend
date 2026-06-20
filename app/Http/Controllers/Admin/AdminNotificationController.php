@@ -99,6 +99,64 @@ class AdminNotificationController extends Controller
         ], $successCount === 1 ? 200 : 422);
     }
 
+    public function storeNotificationRecords(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'body' => 'required|string|max:1000',
+            'user_ids' => 'nullable|array',
+            'user_ids.*' => 'integer|exists:users,id',
+            'broadcast' => 'nullable|boolean',
+        ]);
+
+        $broadcast = (bool) $request->boolean('broadcast');
+        $userIds = $request->input('user_ids', []);
+
+        if (!$broadcast && empty($userIds)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Please provide at least one user to store notifications for.',
+            ], 422);
+        }
+
+        $users = User::query()
+            ->when(
+                $broadcast,
+                fn ($query) => $query->whereNotNull('fcm_token')->where('fcm_token', '!=', ''),
+                fn ($query) => $query->whereIn('id', $userIds)
+            )
+            ->get(['id', 'name', 'fcm_token']);
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No matching users were found for storing notifications.',
+            ], 404);
+        }
+
+        [$storedCount, $results] = $this->notificationService->storeForUsers(
+            $users,
+            $request->title,
+            $request->body,
+            [
+                'delivery_type' => $broadcast ? 'broadcast' : 'direct',
+                'sent_by_admin_id' => optional($request->user())->id,
+                'is_sent' => true,
+                'firebase_response' => [
+                    'source' => 'admin-panel-fallback-store',
+                ],
+                'sent_at' => now(),
+            ]
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Notification records stored successfully.',
+            'stored_count' => $storedCount,
+            'results' => $results,
+        ]);
+    }
+
     public function listTemplates()
     {
         return response()->json([
@@ -195,6 +253,7 @@ class AdminNotificationController extends Controller
             'message' => 'Notification template deleted successfully.',
         ]);
     }
+
     private function getTemplates(): array
     {
         if (!Storage::disk('local')->exists($this->templatesFile)) {

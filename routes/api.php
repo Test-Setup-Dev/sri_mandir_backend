@@ -104,6 +104,7 @@ Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
     // Notification Management
     Route::post('/notifications/send-all', [AdminNotificationController::class, 'sendToAllUsers']);
     Route::post('/notifications/users/{user}', [AdminNotificationController::class, 'sendToUser']);
+    Route::post('/notifications/store', [AdminNotificationController::class, 'storeNotificationRecords']);
     Route::get('/notification-templates', [AdminNotificationController::class, 'listTemplates']);
     Route::post('/notification-templates', [AdminNotificationController::class, 'storeTemplate']);
     Route::put('/notification-templates/{template}', [AdminNotificationController::class, 'updateTemplate']);

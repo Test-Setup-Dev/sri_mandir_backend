@@ -59,6 +59,20 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
+  const hasStoredNotifications = (responseData) =>
+    Array.isArray(responseData?.results) &&
+    responseData.results.length > 0 &&
+    responseData.results.every((item) => item.notification_id);
+
+  const storeNotificationRecords = async ({ title, body, userIds = [], broadcast = false }) => {
+    await api.post('/admin/notifications/store', {
+      title,
+      body,
+      user_ids: userIds,
+      broadcast,
+    });
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -216,6 +230,15 @@ export default function UsersPage() {
         title: notificationForm.title.trim(),
         body: notificationForm.body.trim()
       });
+
+      if (!hasStoredNotifications(response.data)) {
+        await storeNotificationRecords({
+          title: notificationForm.title.trim(),
+          body: notificationForm.body.trim(),
+          userIds: notificationTarget ? [notificationTarget.id] : [],
+          broadcast: !notificationTarget,
+        });
+      }
 
       toast.success(response.data.message || 'Notification sent successfully');
       closeNotificationModal();
