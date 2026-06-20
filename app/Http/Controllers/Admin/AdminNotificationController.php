@@ -3,16 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\NotificationTemplate;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use App\Services\UserNotificationService;
 
 class AdminNotificationController extends Controller
 {
-    private string $templatesFile = 'notification_templates.json';
-
     public function __construct(private UserNotificationService $notificationService)
     {
     }
@@ -161,7 +158,7 @@ class AdminNotificationController extends Controller
     {
         return response()->json([
             'status' => true,
-            'data' => $this->getTemplates(),
+            'data' => NotificationTemplate::query()->latest('updated_at')->latest('id')->get(),
         ]);
     }
 
@@ -173,24 +170,16 @@ class AdminNotificationController extends Controller
             'body' => 'required|string|max:1000',
         ]);
 
-        $templates = $this->getTemplates();
-        $now = now()->toDateTimeString();
-
-        $templates[] = [
-            'id' => (string) Str::uuid(),
+        $template = NotificationTemplate::create([
             'name' => $request->name,
             'title' => $request->title,
             'body' => $request->body,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ];
-
-        $this->persistTemplates($templates);
+        ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Notification template created successfully.',
-            'data' => end($templates),
+            'data' => $template,
         ], 201);
     }
 
@@ -202,74 +191,44 @@ class AdminNotificationController extends Controller
             'body' => 'required|string|max:1000',
         ]);
 
-        $templates = $this->getTemplates();
-        $found = false;
+        $template = NotificationTemplate::query()->find($templateId);
 
-        foreach ($templates as &$template) {
-            if (($template['id'] ?? null) !== $templateId) {
-                continue;
-            }
-
-            $template['name'] = $request->name;
-            $template['title'] = $request->title;
-            $template['body'] = $request->body;
-            $template['updated_at'] = now()->toDateTimeString();
-            $found = true;
-            break;
-        }
-        unset($template);
-
-        if (!$found) {
+        if (!$template) {
             return response()->json([
                 'status' => false,
                 'message' => 'Notification template not found.',
             ], 404);
         }
 
-        $this->persistTemplates($templates);
+        $template->update([
+            'name' => $request->name,
+            'title' => $request->title,
+            'body' => $request->body,
+        ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Notification template updated successfully.',
+            'data' => $template->fresh(),
         ]);
     }
 
     public function destroyTemplate(string $templateId)
     {
-        $templates = $this->getTemplates();
-        $filtered = array_values(array_filter($templates, fn ($template) => ($template['id'] ?? null) !== $templateId));
+        $template = NotificationTemplate::query()->find($templateId);
 
-        if (count($filtered) === count($templates)) {
+        if (!$template) {
             return response()->json([
                 'status' => false,
                 'message' => 'Notification template not found.',
             ], 404);
         }
 
-        $this->persistTemplates($filtered);
+        $template->delete();
 
         return response()->json([
             'status' => true,
             'message' => 'Notification template deleted successfully.',
         ]);
-    }
-
-    private function getTemplates(): array
-    {
-        if (!Storage::disk('local')->exists($this->templatesFile)) {
-            return [];
-        }
-
-        $decoded = json_decode(Storage::disk('local')->get($this->templatesFile), true);
-
-        return is_array($decoded) ? $decoded : [];
-    }
-
-    private function persistTemplates(array $templates): void
-    {
-        Storage::disk('local')->put(
-            $this->templatesFile,
-            json_encode($templates, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
-        );
     }
 }
