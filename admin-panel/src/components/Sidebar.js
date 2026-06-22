@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import styles from './Sidebar.module.css';
 import toast from 'react-hot-toast';
+import { authService } from '@/lib/auth';
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -35,7 +36,7 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     if (confirm('Are you sure you want to logout?')) {
-      localStorage.removeItem('admin_token');
+      authService.logout();
       toast.success('Logged out successfully');
       router.push('/login');
     }

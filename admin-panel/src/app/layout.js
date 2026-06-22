@@ -7,7 +7,8 @@ import AdminLayout from '@/components/AdminLayout';
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
-  const isLoginPage = pathname === '/login';
+  const normalizedPathname = pathname?.replace(/\/+$/, '') || '/';
+  const isLoginPage = normalizedPathname === '/login';
 
   return (
     <html lang="en">
