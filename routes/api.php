@@ -138,6 +138,7 @@ Route::post('/sendnotification', [FirebaseController::class, 'sendNotificationTo
 
 // Media routes
 Route::get('/home-data', [MediaController::class, 'getHomeData']);
+Route::get('/items', [MediaController::class, 'getItems']);
 Route::get('/admin/banners', [BennerController::class, 'getBanners']);
 
 // Public routes

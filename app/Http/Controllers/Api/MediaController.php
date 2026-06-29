@@ -168,6 +168,57 @@ public function myFavorite(Request $request)
 
 }
 
+public function getItems(Request $request)
+{
+    try {
+        $query = MediaItem::with('category');
+
+        if ($request->has('categorie_id')) {
+            $query->where('categorie_id', $request->categorie_id);
+        }
+
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $items = $query->get();
+
+        if ($items->isEmpty()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No items found',
+                'data' => [],
+            ], 404);
+        }
+
+        foreach ($items as $item) {
+            $item->average_rating = round(MediaRating::where('media_id', $item->id)->avg('rating') ?? 0, 1);
+
+            if ($item->type === 'text' && !empty($item->content)) {
+                $lines = preg_split('/(?<=[.?!])\s+|\n+/', $item->content, -1, PREG_SPLIT_NO_EMPTY);
+                $item->content = array_map('trim', $lines);
+            }
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Items fetched successfully',
+            'data' => $items,
+        ]);
+
+    } catch (\Illuminate\Database\QueryException $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Database error: ' . $e->getMessage(),
+        ], 500);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Something went wrong: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
 public function index(){
         return view('admin.media');
     }
